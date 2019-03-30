@@ -43,9 +43,9 @@ class ReciteGui(QMainWindow):
         self.label_font = QFont(self.system_font, 14)
         self.sensor_font = QFont(self.system_font, 12)
 
-        self.quit = QAction("Quit", self)
+        self.quit = QAction("Quit/放弃", self)
         self.quit.setShortcut("Ctrl+Q")
-        self.quit.setStatusTip("Exit Program")
+        self.quit.setStatusTip("Exit Program/放弃")
         self.quit.triggered.connect(self.close)
 
         self.about_tu = QAction("About Test Utility", self)
@@ -60,18 +60,18 @@ class ReciteGui(QMainWindow):
 
         # Create menubar
         self.menubar = self.menuBar()
-        self.file_menu = self.menubar.addMenu("&File")
+        self.file_menu = self.menubar.addMenu("&File/文件")
         self.file_menu.addAction(self.quit)
 
-        self.serial_menu = self.menubar.addMenu("&Serial")
+        self.serial_menu = self.menubar.addMenu("&Serial/串行端口")
         self.serial_menu.installEventFilter(self)
-        self.ports_menu = QMenu("&Ports", self)
+        self.ports_menu = QMenu("&Ports/串行端口", self)
         self.serial_menu.addMenu(self.ports_menu)
         self.ports_menu.aboutToShow.connect(self.populate_ports)
         self.ports_group = QActionGroup(self)
         self.ports_group.triggered.connect(self.connect_port)
 
-        self.help_menu = self.menubar.addMenu("&Help")
+        self.help_menu = self.menubar.addMenu("&Help/求助")
         self.help_menu.addAction(self.about_tu)
         self.help_menu.addAction(self.aboutqt)
 
@@ -84,7 +84,7 @@ class ReciteGui(QMainWindow):
         LINE_EDIT_WIDTH = 200
         self.central_widget = QWidget()
 
-        self.start_btn = QPushButton("Start Cable Test")
+        self.start_btn = QPushButton(r"Start Cable Test/开始测试")
         self.start_btn.setFixedWidth(350)
         self.start_btn.setAutoDefault(True)
         self.start_btn.setFont(self.label_font)
@@ -115,7 +115,7 @@ class ReciteGui(QMainWindow):
         self.central_widget.setLayout(vbox)
         self.setCentralWidget(self.central_widget)
         self.setFixedSize(WINDOW_WIDTH, WINDOW_HEIGHT)
-        self.setWindowTitle("BeadedStream Cable Test/Builder Utility")
+        self.setWindowTitle("BeadedStream Cable Test Utility")
 
     def center(self):
         qr = self.frameGeometry()
@@ -134,7 +134,7 @@ class ReciteGui(QMainWindow):
         self.ports_menu.clear()
 
         if not ports:
-            self.ports_menu.addAction("None")
+            self.ports_menu.addAction("None/没有")
             self.sm.close_port()
 
         for port in ports:
@@ -154,11 +154,13 @@ class ReciteGui(QMainWindow):
         self.sm.open_port(self.port_name)
 
     def port_unavailable(self):
-        QMessageBox.warning(self, "Warning", "Port unavailable!")
+        QMessageBox.warning(self, "Warning", "Port unavailable!\n"
+                                            "没有串行端口")
 
     def serial_error(self):
         QMessageBox.warning(self, "Serial Error", "Serial error! "
-                            "Please try the operation again.")
+                            "Please try the operation again.\n"
+                            "串行端口错误")
         self.setup_page2()
 
     def closeEvent(self, event):
@@ -178,7 +180,8 @@ class ReciteGui(QMainWindow):
 
     def start(self):
         if not self.sm.is_connected(self.port_name):
-            QMessageBox.warning(self, "Warning", "No serial port selected!")
+            QMessageBox.warning(self, "Warning", "No serial port selected!\n"
+                                                  "没有选串行端口")
         else:
             self.test_version_signal.emit()
     
@@ -193,10 +196,10 @@ class ReciteGui(QMainWindow):
     def setup_page2(self):
         central_widget = QWidget()
 
-        self.lbl = QLabel("Read cables")
+        self.lbl = QLabel("Read cables/读传感器")
         self.lbl.setFont(self.label_font)
 
-        self.read_cables_btn = QPushButton("Read Cables")
+        self.read_cables_btn = QPushButton("Read Cables/读传感器")
         self.read_cables_btn.clicked.connect(self.test_cables)
 
         self.hbox = QHBoxLayout()
@@ -236,17 +239,17 @@ class ReciteGui(QMainWindow):
         self.setCentralWidget(central_widget)
 
     def test_cables(self):
-        self.lbl.setText("Reading...")
+        self.lbl.setText("Reading.../读...")
         self.read_cables_btn.setEnabled(False)
         self.box1.clear()
         self.read_cables_signal.emit()
 
     def display_cables(self, boards_list, sensor_num, temps_dict):
-        self.lbl.setText("Finished.")
+        self.lbl.setText("Finished. / 完毕")
         self.read_cables_btn.setEnabled(True)
         test_sensor_num = 12
-        self.sensors.setText(f"{test_sensor_num} sensors found")
-        # self.sensors.setText(f"{sensor_num} sensors found")
+        # self.sensors.setText(f"{test_sensor_num} sensors found")
+        self.sensors.setText(f"{sensor_num} sensors found")
 
         test_temps_dict = {"00 00 09 a9 a0 c0": 21.3,
                            "00 00 07 12 30 f8": 22,
@@ -262,8 +265,8 @@ class ReciteGui(QMainWindow):
                             "00 00 07 12 38 4f": 21.3,
                            }
 
-        failed_sensors = self.check_cable_temps(test_temps_dict)
-        # failed_sensors = self.check_cable_temps(temps_dict)
+        # failed_sensors = self.check_cable_temps(test_temps_dict)
+        failed_sensors = self.check_cable_temps(temps_dict)
 
         # Display 30 boards each in first three box
         # remaining boards in the last one. There should be no more than 125
@@ -285,7 +288,7 @@ class ReciteGui(QMainWindow):
         test_boards_list.reverse()
         boards_list.reverse()
         # Testing
-        boards_list = test_boards_list
+        # boards_list = test_boards_list
 
         box_num = 0
         list_num = 1
@@ -301,7 +304,6 @@ class ReciteGui(QMainWindow):
                 sensor_id_temp = sensor_id[3:-3]
 
                 if sensor_id_temp in failed_sensors:
-                    print(sensor_id_temp)
                     sensor_text = (f" {list_num}) {sensor_id} FAILED")
                     boxes[box_num].setTextColor(Qt.red)
                 else:

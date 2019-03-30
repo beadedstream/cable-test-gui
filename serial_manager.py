@@ -55,8 +55,12 @@ class SerialManager(QObject):
                 for c in command:
                     self.ser.write(c.encode())
                     self.ser.read_until(c.encode())
+                try:
+                    response = self.ser.read_until(self.end).decode()
+                except UnicodeDecodeError:
+                    self.serial_error_signal.emit()
+                    return
 
-                response = self.ser.read_until(self.end).decode()
                 if "SDI12/RS485 BRIDGE MAIN APP 0.3a" not in response:
                     self.version_check_signal.emit(False)
                     return
@@ -69,7 +73,6 @@ class SerialManager(QObject):
 
     @pyqtSlot()
     def read_cables(self):
-        print("Getting ids...")
         ids_cmd = "tac-get-info v\r\n"
         temps_cmd = "temps\r\n"
         temps_dict = {}
