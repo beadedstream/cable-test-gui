@@ -31,7 +31,7 @@ class SerialManager(QObject):
     def open_port(self, port):
         try:
             self.ser.close()
-            self.ser.port = "COM5"
+            self.ser.port = port
             self.ser.open()
         except serial.serialutil.SerialException:
             self.port_unavailable_signal.emit()
@@ -99,7 +99,7 @@ class SerialManager(QObject):
                 boards = re.findall(p1, response)
                 try:
                     sensor_num = int(re.search(p2, response).group(1))
-                except IndexError:
+                except (IndexError, AttributeError) as err:
                     self.serial_error_signal.emit()
                     return
 
