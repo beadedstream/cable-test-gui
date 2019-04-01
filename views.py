@@ -1,3 +1,5 @@
+import os
+import sys
 import serial_manager
 from PyQt5.QtWidgets import (
     QMainWindow, QWidget, QPushButton, QVBoxLayout, QApplication, QLabel,
@@ -10,7 +12,7 @@ from PyQt5.QtCore import QSettings, Qt, QThread, pyqtSignal
 
 VERSION_NUM = "0.1.0"
 
-WINDOW_WIDTH = 1280
+WINDOW_WIDTH = 1400
 WINDOW_HEIGHT = 720
 
 ABOUT_TEXT = f"""
@@ -36,6 +38,7 @@ class ReciteGui(QMainWindow):
         self.sm.port_unavailable_signal.connect(self.port_unavailable)
         self.sm.serial_error_signal.connect(self.serial_error)
         self.sm.cable_values_signal.connect(self.display_cables)
+        self.sm.no_temps_signal.connect(self.no_temps)
 
         self.port_name = None
 
@@ -43,9 +46,9 @@ class ReciteGui(QMainWindow):
         self.label_font = QFont(self.system_font, 14)
         self.sensor_font = QFont(self.system_font, 12)
 
-        self.quit = QAction("Quit/放弃", self)
+        self.quit = QAction("Quit", self)
         self.quit.setShortcut("Ctrl+Q")
-        self.quit.setStatusTip("Exit Program/放弃")
+        self.quit.setStatusTip("Exit Program")
         self.quit.triggered.connect(self.close)
 
         self.about_tu = QAction("About Test Utility", self)
@@ -60,18 +63,18 @@ class ReciteGui(QMainWindow):
 
         # Create menubar
         self.menubar = self.menuBar()
-        self.file_menu = self.menubar.addMenu("&File/文件")
+        self.file_menu = self.menubar.addMenu("&File")
         self.file_menu.addAction(self.quit)
 
-        self.serial_menu = self.menubar.addMenu("&Serial/串行端口")
+        self.serial_menu = self.menubar.addMenu("&Serial")
         self.serial_menu.installEventFilter(self)
-        self.ports_menu = QMenu("&Ports/串行端口", self)
+        self.ports_menu = QMenu("&Ports", self)
         self.serial_menu.addMenu(self.ports_menu)
         self.ports_menu.aboutToShow.connect(self.populate_ports)
         self.ports_group = QActionGroup(self)
         self.ports_group.triggered.connect(self.connect_port)
 
-        self.help_menu = self.menubar.addMenu("&Help/求助")
+        self.help_menu = self.menubar.addMenu("&Help")
         self.help_menu.addAction(self.about_tu)
         self.help_menu.addAction(self.aboutqt)
 
@@ -79,18 +82,24 @@ class ReciteGui(QMainWindow):
 
         self.initUI()
 
+    # Get logo path
+    def resource_path(self, relative_path):
+         if hasattr(sys, '_MEIPASS'):
+             return os.path.join(sys._MEIPASS, relative_path)
+         return os.path.join(os.path.abspath("."), relative_path)
+
     def initUI(self):
         RIGHT_SPACING = 350
         LINE_EDIT_WIDTH = 200
         self.central_widget = QWidget()
 
-        self.start_btn = QPushButton(r"Start Cable Test/开始测试")
+        self.start_btn = QPushButton(r"Start Cable Test")
         self.start_btn.setFixedWidth(350)
         self.start_btn.setAutoDefault(True)
         self.start_btn.setFont(self.label_font)
         self.start_btn.clicked.connect(self.start)
 
-        self.logo_img = QPixmap("images/h_logo.png")
+        self.logo_img = QPixmap(self.resource_path("h_logo.png"))
         self.logo_img = self.logo_img.scaledToWidth(600)
         self.logo = QLabel()
         self.logo.setPixmap(self.logo_img)
@@ -134,7 +143,7 @@ class ReciteGui(QMainWindow):
         self.ports_menu.clear()
 
         if not ports:
-            self.ports_menu.addAction("None/没有")
+            self.ports_menu.addAction("None")
             self.sm.close_port()
 
         for port in ports:
@@ -154,13 +163,11 @@ class ReciteGui(QMainWindow):
         self.sm.open_port(self.port_name)
 
     def port_unavailable(self):
-        QMessageBox.warning(self, "Warning", "Port unavailable!\n"
-                                            "没有串行端口")
+        QMessageBox.warning(self, "Warning", "Port unavailable!")
 
     def serial_error(self):
         QMessageBox.warning(self, "Serial Error", "Serial error! "
-                            "Please try the operation again.\n"
-                            "串行端口错误")
+                            "Please try the operation again.")
         self.setup_page2()
 
     def closeEvent(self, event):
@@ -180,8 +187,7 @@ class ReciteGui(QMainWindow):
 
     def start(self):
         if not self.sm.is_connected(self.port_name):
-            QMessageBox.warning(self, "Warning", "No serial port selected!\n"
-                                                  "没有选串行端口")
+            QMessageBox.warning(self, "Warning", "No serial port selected!")
         else:
             self.test_version_signal.emit()
     
@@ -196,10 +202,10 @@ class ReciteGui(QMainWindow):
     def setup_page2(self):
         central_widget = QWidget()
 
-        self.lbl = QLabel("Read cables/读传感器")
+        self.lbl = QLabel("Read cables")
         self.lbl.setFont(self.label_font)
 
-        self.read_cables_btn = QPushButton("Read Cables/读传感器")
+        self.read_cables_btn = QPushButton("Read Cables")
         self.read_cables_btn.clicked.connect(self.test_cables)
 
         self.hbox = QHBoxLayout()
@@ -239,15 +245,18 @@ class ReciteGui(QMainWindow):
         self.setCentralWidget(central_widget)
 
     def test_cables(self):
-        self.lbl.setText("Reading.../读...")
+        self.lbl.setText("Reading...")
         self.read_cables_btn.setEnabled(False)
         self.box1.clear()
+        self.box2.clear()
+        self.box3.clear()
+        self.box4.clear()
         self.read_cables_signal.emit()
 
     def display_cables(self, boards_list, sensor_num, temps_dict):
-        self.lbl.setText("Finished. / 完毕")
+        self.lbl.setText("Finished.")
         self.read_cables_btn.setEnabled(True)
-        test_sensor_num = 12
+        test_sensor_num = 48
         # self.sensors.setText(f"{test_sensor_num} sensors found")
         self.sensors.setText(f"{sensor_num} sensors found")
 
@@ -258,10 +267,10 @@ class ReciteGui(QMainWindow):
                            "02 00 07 12 58 8f": 44,
                            "03 00 07 12 58 8f": 33,
                             "04 00 07 12 58 8f": 33,
-                            "00 ce 07 12 58 8f": 75,
+                            "00 ce 07 12 58 8f": 74,
                             "00 be 07 12 58 8f": 21.3,
                             "00 00 17 12 58 8f": 21.3,
-                            "00 00 07 13 58 8f": 75.9,
+                            "00 00 07 13 58 8f": 72.0,
                             "00 00 07 12 38 4f": 21.3,
                            }
 
@@ -284,6 +293,42 @@ class ReciteGui(QMainWindow):
                             "3f 00 be 07 12 58 8f 28",
                             "3f 00 00 17 12 58 8f 28",
                             "3f 00 00 07 13 58 8f 28",
+                            "3f 00 00 07 12 38 4f 28",
+                            "06 00 00 09 a9 a0 c0 28", 
+                            "0c 00 00 07 12 30 f8 28",
+                            "3e 00 00 07 12 58 8f 28",
+                            "3f 01 00 07 12 58 8f 28",
+                            "3f 02 00 07 12 58 8f 28",
+                            "3f 03 00 07 12 58 8f 28",
+                            "3f 04 00 07 12 58 8f 28",
+                            "3f 00 ce 07 12 58 8f 28",
+                            "3f 00 be 07 12 58 8f 28",
+                            "3f 00 00 17 12 58 8f 28",
+                            "3f 00 00 07 13 58 8f 28",
+                            "3f 00 00 07 12 38 4f 28",
+                            "06 00 00 09 a9 a0 c0 28", 
+                            "0c 00 00 07 12 30 f8 28",
+                            "3e 00 00 07 12 58 8f 28",
+                            "3f 01 00 07 12 58 8f 28",
+                            "3f 02 00 07 12 58 8f 28",
+                            "3f 03 00 07 12 58 8f 28",
+                            "3f 04 00 07 12 58 8f 28",
+                            "3f 00 ce 07 12 58 8f 28",
+                            "3f 00 be 07 12 58 8f 28",
+                            "3f 00 00 17 12 58 8f 28",
+                            "3f 00 00 07 13 58 8f 28",
+                            "3f 00 00 07 12 38 4f 28",
+                            "06 00 00 09 a9 a0 c0 28", 
+                            "0c 00 00 07 12 30 f8 28",
+                            "3e 00 00 07 12 58 8f 28",
+                            "3f 01 00 07 12 58 8f 28",
+                            "3f 02 00 07 12 58 8f 28",
+                            "3f 03 00 07 12 58 8f 28",
+                            "3f 04 00 07 12 58 8f 28",
+                            "3f 00 ce 07 12 58 8f 28",
+                            "3f 00 be 07 12 58 8f 28",
+                            "3f 00 00 17 12 58 8f 28",
+                            "3f 00 00 07 13 58 8f 28",
                             "3f 00 00 07 12 38 4f 28"]
         test_boards_list.reverse()
         boards_list.reverse()
@@ -292,6 +337,7 @@ class ReciteGui(QMainWindow):
 
         box_num = 0
         list_num = 1
+        temp = None
 
         while len(boards_list):
             for i in range(0, box_capacities[box_num]):
@@ -304,10 +350,11 @@ class ReciteGui(QMainWindow):
                 sensor_id_temp = sensor_id[3:-3]
 
                 if sensor_id_temp in failed_sensors:
-                    sensor_text = (f" {list_num}) {sensor_id} FAILED")
+                    temp = failed_sensors[sensor_id_temp]
+                    sensor_text = (f" {list_num}) {sensor_id} FAILED {temp}")
                     boxes[box_num].setTextColor(Qt.red)
                 else:
-                    sensor_text = f" {list_num}) {sensor_id}"
+                    sensor_text = f" {list_num}) {sensor_id} "
                     boxes[box_num].setTextColor(Qt.black)
 
                 # Add a blank line every ten sensors
@@ -322,7 +369,12 @@ class ReciteGui(QMainWindow):
     def check_cable_temps(self, temps):
         failed = {}
         for sensor, temp in temps.items():
-            if temp >= 75:
+            if temp > 75.0:
                 failed[sensor] = temp
 
         return failed
+
+    def no_temps(self):
+        QMessageBox.warning(self, "Serial Error",
+                            "Reading temperatures failed.")
+        self.setup_page2()

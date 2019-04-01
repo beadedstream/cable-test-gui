@@ -9,6 +9,7 @@ class SerialManager(QObject):
     version_check_signal = pyqtSignal(bool)
     serial_error_signal = pyqtSignal()
     cable_values_signal = pyqtSignal(list, int, dict)
+    no_temps_signal = pyqtSignal()
 
     def __init__(self):
         super().__init__()
@@ -16,7 +17,7 @@ class SerialManager(QObject):
                     parity=serial.PARITY_NONE,
                     bytesize=serial.EIGHTBITS,
                     stopbits=serial.STOPBITS_ONE, timeout=3)
-        self.end = b"\r\n> "
+        self.end = b"\r\n>"
 
     def scan_ports():
         return serial.tools.list_ports.comports()
@@ -84,12 +85,14 @@ class SerialManager(QObject):
 
         if self.ser.is_open:
             try:
+                self.ser.flush()
+
                 self.flush_buffers()
 
                 for c in ids_cmd:
                     self.ser.write(c.encode())
                     self.ser.read_until(c.encode())
-
+                    
                 try:
                     response = self.ser.read_until(self.end).decode()
                 except UnicodeDecodeError:
@@ -108,6 +111,9 @@ class SerialManager(QObject):
                     board = board.strip().replace("  ", " ")
                     boards[b] = board
 
+                self.ser.flush()
+                self.flush_buffers()
+
                 for c in temps_cmd:
                     self.ser.write(c.encode())
                     self.ser.read_until(c.encode())
@@ -119,21 +125,24 @@ class SerialManager(QObject):
                     return
 
                 matches = re.findall(p3, response)
+                if matches:
+                    for match in matches:
+                        board_id = match[0].strip()
 
-                for match in matches:
-                    board_id = match[0].strip()
+                        t = re.search(p4, match[1]).group()
 
-                    t = re.search(p4, match[1]).group()
+                        if t:
+                            temp = float(t)
+                        else:
+                            self.serial_error_signal.emit()
+                            return
 
-                    try:
-                        temp = float(t)
-                    except:
-                        self.serial_error_signal.emit()
-                        return
+                        temps_dict[board_id] = temp
 
-                    temps_dict[board_id] = temp
-
-                self.cable_values_signal.emit(boards, sensor_num, temps_dict)
+                    self.cable_values_signal.emit(boards, sensor_num, temps_dict)
+                else:
+                    self.no_temps_signal.emit()
+                    return
 
             except serial.serialutil.SerialException:
                 self.port_unavailable_signal.emit()
