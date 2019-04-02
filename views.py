@@ -1,3 +1,4 @@
+import re
 import os
 import sys
 import serial_manager
@@ -156,7 +157,8 @@ class ReciteGui(QMainWindow):
             self.ports_group.addAction(action)
 
     def connect_port(self, action):
-        self.port_name = action.text()[0:4]
+        p = "COM[0-9]+"
+        self.port_name = re.search(p, action.text()).group()
         if (self.sm.is_connected(self.port_name)):
             action.setChecked
 
@@ -254,6 +256,10 @@ class ReciteGui(QMainWindow):
         self.read_cables_signal.emit()
 
     def display_cables(self, boards_list, sensor_num, temps_dict):
+
+        # print(f"Boards list: {boards_list}")
+        # print(f"Temps dict: {temps_dict}")
+
         self.lbl.setText("Finished.")
         self.read_cables_btn.setEnabled(True)
         test_sensor_num = 48
@@ -276,6 +282,8 @@ class ReciteGui(QMainWindow):
 
         # failed_sensors = self.check_cable_temps(test_temps_dict)
         failed_sensors = self.check_cable_temps(temps_dict)
+
+        # print(failed_sensors)
 
         # Display 30 boards each in first three box
         # remaining boards in the last one. There should be no more than 125
@@ -347,14 +355,28 @@ class ReciteGui(QMainWindow):
                     break
 
                 # Trim it to six bytes to match the ids from the temps
+                # print(f"sensor_id: {sensor_id}")
                 sensor_id_temp = sensor_id[3:-3]
+
+                # debug_str = (f"Sensor id: {sensor_id}\n"
+                #              f"Sensor id temp: {sensor_id_temp}\n")
+                # self.box4.append(debug_str)
+                # print(f"sensor id temp: {sensor_id_temp}")
+
+                # print(f"Temps dict: {temps_dict}")
+                # print(sensor_id_temp)
 
                 if sensor_id_temp in failed_sensors:
                     temp = failed_sensors[sensor_id_temp]
                     sensor_text = (f" {list_num}) {sensor_id} FAILED {temp}")
                     boxes[box_num].setTextColor(Qt.red)
                 else:
-                    sensor_text = f" {list_num}) {sensor_id} "
+                    try:
+                        temp = temps_dict[sensor_id_temp]
+                    except IndexError:
+                        QMessageBox.warning("Index Error", "Index error on temps_dict")
+                        return
+                    sensor_text = f" {list_num}) {sensor_id} {temp}"
                     boxes[box_num].setTextColor(Qt.black)
 
                 # Add a blank line every ten sensors
@@ -369,9 +391,8 @@ class ReciteGui(QMainWindow):
     def check_cable_temps(self, temps):
         failed = {}
         for sensor, temp in temps.items():
-            if temp > 75.0:
+            if temp > 25.0:
                 failed[sensor] = temp
-
         return failed
 
     def no_temps(self):

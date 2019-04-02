@@ -16,17 +16,19 @@ class SerialManager(QObject):
         self.ser = serial.Serial(port=None, baudrate=115200,
                     parity=serial.PARITY_NONE,
                     bytesize=serial.EIGHTBITS,
-                    stopbits=serial.STOPBITS_ONE, timeout=3)
+                    stopbits=serial.STOPBITS_ONE, timeout=40)
         self.end = b"\r\n>"
 
     def scan_ports():
         return serial.tools.list_ports.comports()
 
     def is_connected(self, port):
-        try:
-            self.ser.write(b"\r\n")
-        except serial.serialutil.SerialException:
-            return False
+        # try:
+        #     self.ser.write(b"\r\n")
+        #     time.sleep(0.5)
+        #     self.ser.read(self.ser.in_waiting)
+        # except serial.serialutil.SerialException:
+        #     return False
         return self.ser.port == port and self.ser.is_open
 
     def open_port(self, port):
@@ -55,6 +57,7 @@ class SerialManager(QObject):
                 # because half-duplex with no control flow.
                 for c in command:
                     self.ser.write(c.encode())
+                    self.ser.flush()
                     self.ser.read_until(c.encode())
                 try:
                     response = self.ser.read_until(self.end).decode()
@@ -80,7 +83,7 @@ class SerialManager(QObject):
 
         p1 = r"((?:[0-9a-fA-F][0-9a-fA-F][ \t]+){8})"
         p2 = r"([0-9]+) sensors"
-        p3 = r"((?:[0-9a-fA-F][0-9a-fA-F][ \t]+){6})( temp =\s+[0-9]+\.[0-9]+ C)"
+        p3 = r"((?:[0-9a-fA-F][0-9a-fA-F][ \t]+){6})(temp =\s+[0-9]+\.[0-9]+ C)"
         p4 = r"[0-9]+\.[0-9]+"
 
         if self.ser.is_open:
@@ -91,15 +94,20 @@ class SerialManager(QObject):
 
                 for c in ids_cmd:
                     self.ser.write(c.encode())
-                    self.ser.read_until(c.encode())
+                    self.ser.flush()
+                    time.sleep(0.05)
+                    # self.ser.read_until(c.encode())
+                    self.ser.read(self.ser.in_waiting)
                     
                 try:
                     response = self.ser.read_until(self.end).decode()
+                    # print(f"response: {response}")
                 except UnicodeDecodeError:
                     self.serial_error_signal.emit()
                     return
 
                 boards = re.findall(p1, response)
+                # print(f"boards: {boards}")
                 try:
                     sensor_num = int(re.search(p2, response).group(1))
                 except (IndexError, AttributeError) as err:
@@ -111,20 +119,26 @@ class SerialManager(QObject):
                     board = board.strip().replace("  ", " ")
                     boards[b] = board
 
+                # print(boards)
                 self.ser.flush()
                 self.flush_buffers()
 
                 for c in temps_cmd:
                     self.ser.write(c.encode())
-                    self.ser.read_until(c.encode())
+                    self.ser.flush()
+                    time.sleep(0.05)
+                    # self.ser.read_until(c.encode())
+                    self.ser.read(self.ser.in_waiting)
 
                 try:
                     response = self.ser.read_until(self.end).decode()
+                    # print(response)
                 except UnicodeDecodeError:
                     self.serial_error_signal.emit()
                     return
 
                 matches = re.findall(p3, response)
+                # print(matches)
                 if matches:
                     for match in matches:
                         board_id = match[0].strip()
@@ -139,7 +153,9 @@ class SerialManager(QObject):
 
                         temps_dict[board_id] = temp
 
-                    self.cable_values_signal.emit(boards, sensor_num, temps_dict)
+                    self.cable_values_signal.emit(boards, sensor_num,
+                                                  temps_dict)
+                    # print(temps_dict)
                 else:
                     self.no_temps_signal.emit()
                     return
