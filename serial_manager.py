@@ -44,6 +44,7 @@ class SerialManager(QObject):
     @pyqtSlot()
     def check_version(self):
         command = "version"
+        p = "SDI12/RS485 BRIDGE MAIN APP [0-9]+\.[0-9]+[a-z]"
         if self.ser.is_open:
             try:
                 self.flush_buffers()
@@ -64,10 +65,12 @@ class SerialManager(QObject):
                     self.serial_error_signal.emit()
                     return
 
-                if "SDI12/RS485 BRIDGE MAIN APP 0.3a" not in response:
+                # Ensure version matches format, otherwise emit error signal.
+                if re.search(p, response):
+                    self.version_check_signal.emit(True)
+                else:
                     self.version_check_signal.emit(False)
                     return
-                self.version_check_signal.emit(True)
 
             except serial.serialutil.SerialException:
                 self.port_unavailable_signal.emit()
