@@ -106,7 +106,10 @@ class SerialManager(QObject):
                     self.serial_error_signal.emit()
                     return
 
-                if "0 sensors" in response:
+                # Check for 0 sensors read response, don't match on 
+                # 10, 20, 30, etc sensors so use re.match to get beginning of
+                # string.
+                if re.match("0 sensors", response.strip()):
                     self.no_sensors_signal.emit()
                     return
                 else:
