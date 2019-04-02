@@ -39,7 +39,7 @@ class ReciteGui(QMainWindow):
         self.sm.port_unavailable_signal.connect(self.port_unavailable)
         self.sm.serial_error_signal.connect(self.serial_error)
         self.sm.cable_values_signal.connect(self.display_cables)
-        self.sm.no_temps_signal.connect(self.no_temps)
+        self.sm.no_sensors_signal.connect(self.no_sensors)
 
         self.port_name = None
 
@@ -75,7 +75,7 @@ class ReciteGui(QMainWindow):
         self.ports_group = QActionGroup(self)
         self.ports_group.triggered.connect(self.connect_port)
 
-        self.help_menu = self.menubar.addMenu("&Help/求助")
+        self.help_menu = self.menubar.addMenu("&Help/帮助")
         self.help_menu.addAction(self.about_tu)
         self.help_menu.addAction(self.aboutqt)
 
@@ -144,7 +144,7 @@ class ReciteGui(QMainWindow):
         self.ports_menu.clear()
 
         if not ports:
-            self.ports_menu.addAction("None/没有")
+            self.ports_menu.addAction("None/无连接")
             self.sm.close_port()
 
         for port in ports:
@@ -192,7 +192,7 @@ class ReciteGui(QMainWindow):
     def start(self):
         if not self.sm.is_connected(self.port_name):
             QMessageBox.warning(self, "Warning", "No serial port selected!\n"
-                                 "没有选串行端口")
+                                 "未选串行端口")
         else:
             self.test_version_signal.emit()
     
@@ -207,10 +207,10 @@ class ReciteGui(QMainWindow):
     def setup_page2(self):
         central_widget = QWidget()
 
-        self.lbl = QLabel("Read cables/读传感器")
+        self.lbl = QLabel("Read sensors/读传感器")
         self.lbl.setFont(self.label_font)
 
-        self.read_cables_btn = QPushButton("Read cables/读传感器")
+        self.read_cables_btn = QPushButton("Read sensors/读传感器")
         self.read_cables_btn.clicked.connect(self.test_cables)
 
         self.hbox = QHBoxLayout()
@@ -250,8 +250,9 @@ class ReciteGui(QMainWindow):
         self.setCentralWidget(central_widget)
 
     def test_cables(self):
-        self.lbl.setText("Reading.../读...")
+        self.lbl.setText("Reading.../读取...")
         self.read_cables_btn.setEnabled(False)
+        self.sensors.clear()
         self.box1.clear()
         self.box2.clear()
         self.box3.clear()
@@ -260,91 +261,18 @@ class ReciteGui(QMainWindow):
 
     def display_cables(self, boards_list, sensor_num, temps_dict):
 
-        # print(f"Boards list: {boards_list}")
-        # print(f"Temps dict: {temps_dict}")
-
         self.lbl.setText("Finished./完毕")
         self.read_cables_btn.setEnabled(True)
-        test_sensor_num = 48
-        # self.sensors.setText(f"{test_sensor_num} sensors found")
         self.sensors.setText(f"{sensor_num} sensors found")
 
-        test_temps_dict = {"00 00 09 a9 a0 c0": 21.3,
-                           "00 00 07 12 30 f8": 22,
-                           "00 00 07 12 58 8f": 74.9,
-                           "01 00 07 12 58 8f": 31,
-                           "02 00 07 12 58 8f": 44,
-                           "03 00 07 12 58 8f": 33,
-                            "04 00 07 12 58 8f": 33,
-                            "00 ce 07 12 58 8f": 74,
-                            "00 be 07 12 58 8f": 21.3,
-                            "00 00 17 12 58 8f": 21.3,
-                            "00 00 07 13 58 8f": 72.0,
-                            "00 00 07 12 38 4f": 21.3,
-                           }
-
-        # failed_sensors = self.check_cable_temps(test_temps_dict)
         failed_sensors = self.check_cable_temps(temps_dict)
-
-        # print(failed_sensors)
 
         # Display 30 boards each in first three box
         # remaining boards in the last one. There should be no more than 125
         # sensors. 
         boxes = [self.box1, self.box2, self.box3, self.box4]
         box_capacities = [30, 30, 30, 35]
-        test_boards_list = ["06 00 00 09 a9 a0 c0 28", 
-                            "0c 00 00 07 12 30 f8 28",
-                            "3e 00 00 07 12 58 8f 28",
-                            "3f 01 00 07 12 58 8f 28",
-                            "3f 02 00 07 12 58 8f 28",
-                            "3f 03 00 07 12 58 8f 28",
-                            "3f 04 00 07 12 58 8f 28",
-                            "3f 00 ce 07 12 58 8f 28",
-                            "3f 00 be 07 12 58 8f 28",
-                            "3f 00 00 17 12 58 8f 28",
-                            "3f 00 00 07 13 58 8f 28",
-                            "3f 00 00 07 12 38 4f 28",
-                            "06 00 00 09 a9 a0 c0 28", 
-                            "0c 00 00 07 12 30 f8 28",
-                            "3e 00 00 07 12 58 8f 28",
-                            "3f 01 00 07 12 58 8f 28",
-                            "3f 02 00 07 12 58 8f 28",
-                            "3f 03 00 07 12 58 8f 28",
-                            "3f 04 00 07 12 58 8f 28",
-                            "3f 00 ce 07 12 58 8f 28",
-                            "3f 00 be 07 12 58 8f 28",
-                            "3f 00 00 17 12 58 8f 28",
-                            "3f 00 00 07 13 58 8f 28",
-                            "3f 00 00 07 12 38 4f 28",
-                            "06 00 00 09 a9 a0 c0 28", 
-                            "0c 00 00 07 12 30 f8 28",
-                            "3e 00 00 07 12 58 8f 28",
-                            "3f 01 00 07 12 58 8f 28",
-                            "3f 02 00 07 12 58 8f 28",
-                            "3f 03 00 07 12 58 8f 28",
-                            "3f 04 00 07 12 58 8f 28",
-                            "3f 00 ce 07 12 58 8f 28",
-                            "3f 00 be 07 12 58 8f 28",
-                            "3f 00 00 17 12 58 8f 28",
-                            "3f 00 00 07 13 58 8f 28",
-                            "3f 00 00 07 12 38 4f 28",
-                            "06 00 00 09 a9 a0 c0 28", 
-                            "0c 00 00 07 12 30 f8 28",
-                            "3e 00 00 07 12 58 8f 28",
-                            "3f 01 00 07 12 58 8f 28",
-                            "3f 02 00 07 12 58 8f 28",
-                            "3f 03 00 07 12 58 8f 28",
-                            "3f 04 00 07 12 58 8f 28",
-                            "3f 00 ce 07 12 58 8f 28",
-                            "3f 00 be 07 12 58 8f 28",
-                            "3f 00 00 17 12 58 8f 28",
-                            "3f 00 00 07 13 58 8f 28",
-                            "3f 00 00 07 12 38 4f 28"]
-        test_boards_list.reverse()
         boards_list.reverse()
-        # Testing
-        # boards_list = test_boards_list
 
         box_num = 0
         list_num = 1
@@ -358,28 +286,14 @@ class ReciteGui(QMainWindow):
                     break
 
                 # Trim it to six bytes to match the ids from the temps
-                # print(f"sensor_id: {sensor_id}")
                 sensor_id_temp = sensor_id[3:-3]
-
-                # debug_str = (f"Sensor id: {sensor_id}\n"
-                #              f"Sensor id temp: {sensor_id_temp}\n")
-                # self.box4.append(debug_str)
-                # print(f"sensor id temp: {sensor_id_temp}")
-
-                # print(f"Temps dict: {temps_dict}")
-                # print(sensor_id_temp)
 
                 if sensor_id_temp in failed_sensors:
                     temp = failed_sensors[sensor_id_temp]
                     sensor_text = (f" {list_num}) {sensor_id} FAILED {temp}")
                     boxes[box_num].setTextColor(Qt.red)
                 else:
-                    try:
-                        temp = temps_dict[sensor_id_temp]
-                    except IndexError:
-                        QMessageBox.warning("Index Error", "Index error on temps_dict")
-                        return
-                    sensor_text = f" {list_num}) {sensor_id} {temp}"
+                    sensor_text = f" {list_num}) {sensor_id}"
                     boxes[box_num].setTextColor(Qt.black)
 
                 # Add a blank line every ten sensors
@@ -394,11 +308,10 @@ class ReciteGui(QMainWindow):
     def check_cable_temps(self, temps):
         failed = {}
         for sensor, temp in temps.items():
-            if temp > 25.0:
+            if temp > 75.0:
                 failed[sensor] = temp
         return failed
 
-    def no_temps(self):
-        QMessageBox.warning(self, "Serial Error/串行端口错误",
-                            "Reading temperatures failed.")
+    def no_sensors(self):
         self.setup_page2()
+        self.sensors.setText("0 sensors found")
