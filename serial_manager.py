@@ -9,7 +9,7 @@ class SerialManager(QObject):
     version_check_signal = pyqtSignal(bool)
     serial_error_signal = pyqtSignal()
     cable_values_signal = pyqtSignal(list, int, dict)
-    no_temps_signal = pyqtSignal()
+    no_sensors_signal = pyqtSignal()
 
     def __init__(self):
         super().__init__()
@@ -23,12 +23,6 @@ class SerialManager(QObject):
         return serial.tools.list_ports.comports()
 
     def is_connected(self, port):
-        # try:
-        #     self.ser.write(b"\r\n")
-        #     time.sleep(0.5)
-        #     self.ser.read(self.ser.in_waiting)
-        # except serial.serialutil.SerialException:
-        #     return False
         return self.ser.port == port and self.ser.is_open
 
     def open_port(self, port):
@@ -49,7 +43,7 @@ class SerialManager(QObject):
 
     @pyqtSlot()
     def check_version(self):
-        command = "version\r\n"
+        command = "version"
         if self.ser.is_open:
             try:
                 self.flush_buffers()
@@ -58,7 +52,12 @@ class SerialManager(QObject):
                 for c in command:
                     self.ser.write(c.encode())
                     self.ser.flush()
-                    self.ser.read_until(c.encode())
+                    time.sleep(0.05)
+                    self.ser.read(self.ser.in_waiting)
+
+                self.ser.write(b"\r\n")
+                self.ser.flush()
+                time.sleep(0.1)
                 try:
                     response = self.ser.read_until(self.end).decode()
                 except UnicodeDecodeError:
@@ -96,18 +95,20 @@ class SerialManager(QObject):
                     self.ser.write(c.encode())
                     self.ser.flush()
                     time.sleep(0.05)
-                    # self.ser.read_until(c.encode())
                     self.ser.read(self.ser.in_waiting)
                     
                 try:
                     response = self.ser.read_until(self.end).decode()
-                    # print(f"response: {response}")
                 except UnicodeDecodeError:
                     self.serial_error_signal.emit()
                     return
 
-                boards = re.findall(p1, response)
-                # print(f"boards: {boards}")
+                if "0 sensors" in response:
+                    self.no_sensors_signal.emit()
+                    return
+                else:
+                    boards = re.findall(p1, response)
+
                 try:
                     sensor_num = int(re.search(p2, response).group(1))
                 except (IndexError, AttributeError) as err:
@@ -119,7 +120,6 @@ class SerialManager(QObject):
                     board = board.strip().replace("  ", " ")
                     boards[b] = board
 
-                # print(boards)
                 self.ser.flush()
                 self.flush_buffers()
 
@@ -127,18 +127,16 @@ class SerialManager(QObject):
                     self.ser.write(c.encode())
                     self.ser.flush()
                     time.sleep(0.05)
-                    # self.ser.read_until(c.encode())
                     self.ser.read(self.ser.in_waiting)
 
                 try:
                     response = self.ser.read_until(self.end).decode()
-                    # print(response)
                 except UnicodeDecodeError:
                     self.serial_error_signal.emit()
                     return
 
                 matches = re.findall(p3, response)
-                # print(matches)
+
                 if matches:
                     for match in matches:
                         board_id = match[0].strip()
@@ -155,7 +153,6 @@ class SerialManager(QObject):
 
                     self.cable_values_signal.emit(boards, sensor_num,
                                                   temps_dict)
-                    # print(temps_dict)
                 else:
                     self.no_temps_signal.emit()
                     return
