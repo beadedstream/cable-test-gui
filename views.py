@@ -47,9 +47,9 @@ class ReciteGui(QMainWindow):
         self.label_font = QFont(self.system_font, 14)
         self.sensor_font = QFont(self.system_font, 12)
 
-        self.quit = QAction("Quit", self)
+        self.quit = QAction("Quit/退出；結束", self)
         self.quit.setShortcut("Ctrl+Q")
-        self.quit.setStatusTip("Exit Program")
+        self.quit.setStatusTip("Exit Program/退出；結束")
         self.quit.triggered.connect(self.close)
 
         self.about_tu = QAction("About Test Utility", self)
@@ -64,18 +64,18 @@ class ReciteGui(QMainWindow):
 
         # Create menubar
         self.menubar = self.menuBar()
-        self.file_menu = self.menubar.addMenu("&File")
+        self.file_menu = self.menubar.addMenu("&File/文件")
         self.file_menu.addAction(self.quit)
 
-        self.serial_menu = self.menubar.addMenu("&Serial")
+        self.serial_menu = self.menubar.addMenu("&Serial/串行端口")
         self.serial_menu.installEventFilter(self)
-        self.ports_menu = QMenu("&Ports", self)
+        self.ports_menu = QMenu("&Ports/串行端口", self)
         self.serial_menu.addMenu(self.ports_menu)
         self.ports_menu.aboutToShow.connect(self.populate_ports)
         self.ports_group = QActionGroup(self)
         self.ports_group.triggered.connect(self.connect_port)
 
-        self.help_menu = self.menubar.addMenu("&Help")
+        self.help_menu = self.menubar.addMenu("&Help/求助")
         self.help_menu.addAction(self.about_tu)
         self.help_menu.addAction(self.aboutqt)
 
@@ -94,7 +94,7 @@ class ReciteGui(QMainWindow):
         LINE_EDIT_WIDTH = 200
         self.central_widget = QWidget()
 
-        self.start_btn = QPushButton(r"Start Cable Test")
+        self.start_btn = QPushButton("Start Cable Test / 开始测试")
         self.start_btn.setFixedWidth(350)
         self.start_btn.setAutoDefault(True)
         self.start_btn.setFont(self.label_font)
@@ -144,7 +144,7 @@ class ReciteGui(QMainWindow):
         self.ports_menu.clear()
 
         if not ports:
-            self.ports_menu.addAction("None")
+            self.ports_menu.addAction("None/没有")
             self.sm.close_port()
 
         for port in ports:
@@ -165,11 +165,13 @@ class ReciteGui(QMainWindow):
         self.sm.open_port(self.port_name)
 
     def port_unavailable(self):
-        QMessageBox.warning(self, "Warning", "Port unavailable!")
+        QMessageBox.warning(self, "Warning", "Port unavailable!\n"
+                            "没有串行端口")
 
     def serial_error(self):
-        QMessageBox.warning(self, "Serial Error", "Serial error! "
-                            "Please try the operation again.")
+        QMessageBox.warning(self, "Serial Error/串行端口错误", "Serial error! "
+                            "Please try the operation again.\n"
+                            "串行端口错误")
         self.setup_page2()
 
     def closeEvent(self, event):
@@ -189,7 +191,8 @@ class ReciteGui(QMainWindow):
 
     def start(self):
         if not self.sm.is_connected(self.port_name):
-            QMessageBox.warning(self, "Warning", "No serial port selected!")
+            QMessageBox.warning(self, "Warning", "No serial port selected!\n"
+                                 "没有选串行端口")
         else:
             self.test_version_signal.emit()
     
@@ -197,17 +200,17 @@ class ReciteGui(QMainWindow):
         if result:
             self.setup_page2()
         else:
-            QMessageBox.warning(self, "Serial Error", "No communication. "
+            QMessageBox.warning(self, "Serial Error/串行端口错误", "No communication. "
                 "Please make sure the Recite is powered and the cables are "
                 "properly connected to computer.")
 
     def setup_page2(self):
         central_widget = QWidget()
 
-        self.lbl = QLabel("Read cables")
+        self.lbl = QLabel("Read cables/读传感器")
         self.lbl.setFont(self.label_font)
 
-        self.read_cables_btn = QPushButton("Read Cables")
+        self.read_cables_btn = QPushButton("Read cables/读传感器")
         self.read_cables_btn.clicked.connect(self.test_cables)
 
         self.hbox = QHBoxLayout()
@@ -247,7 +250,7 @@ class ReciteGui(QMainWindow):
         self.setCentralWidget(central_widget)
 
     def test_cables(self):
-        self.lbl.setText("Reading...")
+        self.lbl.setText("Reading.../读...")
         self.read_cables_btn.setEnabled(False)
         self.box1.clear()
         self.box2.clear()
@@ -260,7 +263,7 @@ class ReciteGui(QMainWindow):
         # print(f"Boards list: {boards_list}")
         # print(f"Temps dict: {temps_dict}")
 
-        self.lbl.setText("Finished.")
+        self.lbl.setText("Finished./完毕")
         self.read_cables_btn.setEnabled(True)
         test_sensor_num = 48
         # self.sensors.setText(f"{test_sensor_num} sensors found")
@@ -396,6 +399,6 @@ class ReciteGui(QMainWindow):
         return failed
 
     def no_temps(self):
-        QMessageBox.warning(self, "Serial Error",
+        QMessageBox.warning(self, "Serial Error/串行端口错误",
                             "Reading temperatures failed.")
         self.setup_page2()
